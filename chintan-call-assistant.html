@@ -219,6 +219,17 @@
     align-self:flex-start;
   }
   .gear-btn:hover{color:var(--paper);border-color:var(--paper-dim);}
+
+  .quick-record{
+    background:var(--ink-2);border:1px solid var(--rule-strong);border-radius:6px;
+    padding:16px 18px;margin:18px 0 22px;
+    display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:14px;
+  }
+  .quick-record-text{display:flex;flex-direction:column;gap:3px;max-width:440px;}
+  .quick-record-text strong{font-size:14px;}
+  .quick-record-text span{font-size:12.5px;color:var(--paper-dim);line-height:1.5;}
+  .quick-record-controls{display:flex;align-items:center;gap:12px;flex:none;}
+  #quickRecordStatus{width:100%;font-size:12px;color:var(--slate);}
   .settings-field{margin-top:16px;}
   .settings-field label{display:block;font-size:11px;color:var(--slate);margin-bottom:6px;}
   .settings-field input{
@@ -290,6 +301,18 @@
     </div>
     <button class="gear-btn" onclick="openSettings()" title="Voice settings">⚙</button>
   </header>
+
+  <div class="quick-record">
+    <div class="quick-record-text">
+      <strong>Capturing a real moment right now?</strong>
+      <span>Tap record while you're actually on a call (Hindi, Gujarati, happy, serious — whatever this moment is), then stop. It gets added straight to your voice clone.</span>
+    </div>
+    <div class="quick-record-controls">
+      <button class="record-btn" id="quickRecordBtn" onclick="toggleQuickRecording()"><span class="dot"></span><span id="quickRecordLabel">Start recording</span></button>
+      <span class="record-timer" id="quickRecordTimer">0:00</span>
+    </div>
+    <div class="settings-status" id="quickRecordStatus"></div>
+  </div>
 
   <div class="colheads">
     <div>Time</div><div>Caller</div><div>Category</div><div>Summary</div>
@@ -748,6 +771,59 @@ async function submitVoiceSample(blob, {isNew}){
     console.error(e);
     return {ok:false, message:'Could not reach ElevenLabs — check your key and try again.'};
   }
+}
+
+let quickMediaRecorder = null, quickChunks = [], quickStream = null, quickSeconds = 0, quickInterval = null;
+
+async function toggleQuickRecording(){
+  const btn = document.getElementById('quickRecordBtn');
+  const label = document.getElementById('quickRecordLabel');
+  const status = document.getElementById('quickRecordStatus');
+
+  if(quickMediaRecorder && quickMediaRecorder.state === 'recording'){
+    quickMediaRecorder.stop();
+    return;
+  }
+  if(!VOICE_SETTINGS.apiKey){
+    status.textContent = 'Add your ElevenLabs API key in Settings (⚙) first.';
+    return;
+  }
+  try{
+    quickStream = await navigator.mediaDevices.getUserMedia({audio:true});
+  }catch(e){
+    status.textContent = 'Microphone access was blocked — allow it in your browser settings.';
+    return;
+  }
+  quickChunks = [];
+  quickSeconds = 0;
+  status.textContent = '';
+  document.getElementById('quickRecordTimer').textContent = '0:00';
+
+  quickMediaRecorder = new MediaRecorder(quickStream);
+  quickMediaRecorder.ondataavailable = (e) => { if(e.data.size>0) quickChunks.push(e.data); };
+  quickMediaRecorder.onstop = async () => {
+    quickStream.getTracks().forEach(t=>t.stop());
+    clearInterval(quickInterval);
+    btn.classList.remove('recording');
+    label.textContent = 'Start recording';
+
+    const blob = new Blob(quickChunks, {type: quickMediaRecorder.mimeType || 'audio/webm'});
+    status.textContent = VOICE_SETTINGS.voiceId ? 'Adding this sample to your clone…' : 'Creating your voice clone from this sample…';
+    const result = await submitVoiceSample(blob, {isNew: !VOICE_SETTINGS.voiceId});
+    if(result.ok){
+      status.textContent = '✓ Added — this sample is now part of your clone.';
+    }else{
+      status.textContent = result.message;
+    }
+  };
+  quickMediaRecorder.start();
+  btn.classList.add('recording');
+  label.textContent = 'Stop & add sample';
+  quickInterval = setInterval(() => {
+    quickSeconds++;
+    const m = Math.floor(quickSeconds/60), s = quickSeconds%60;
+    document.getElementById('quickRecordTimer').textContent = `${m}:${s.toString().padStart(2,'0')}`;
+  }, 1000);
 }
 
 let liveMediaRecorder = null, liveChunks = [], liveStream = null;
