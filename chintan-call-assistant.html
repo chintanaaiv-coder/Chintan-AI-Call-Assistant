@@ -111,11 +111,16 @@
   .badge.regulatory{background:var(--rose-dim);color:#E38F76;}
   .badge.client{background:var(--teal-dim);color:#7FC2AF;}
   .badge.bank{background:var(--brass-dim);color:#E1C05C;}
+  .badge.peer{background:rgba(139,163,201,0.16);color:#9FB6DE;}
   .badge.prospect{background:var(--slate-dim);color:#AAB3C2;}
   .badge.vendor{background:var(--slate-dim);color:#AAB3C2;}
   .badge.staff{background:var(--slate-dim);color:#AAB3C2;}
+  .badge.personal{background:rgba(201,162,39,0.08);color:#B9AE8C;font-style:italic;}
   .badge.sales{background:rgba(255,255,255,0.05);color:var(--slate);}
   .badge.unclear{background:rgba(255,255,255,0.05);color:var(--slate);font-style:italic;}
+  .badge.deadline-urgent{background:var(--rose-dim);color:#E38F76;margin-left:6px;font-weight:600;}
+  .badge.deadline-approaching{background:var(--brass-dim);color:#E1C05C;margin-left:6px;}
+  .badge.deadline-normal{background:var(--slate-dim);color:#AAB3C2;margin-left:6px;}
 
   /* Detail overlay */
   .overlay{
@@ -382,13 +387,86 @@
 <script>
 const CATEGORY_LABEL = {
   regulatory:'Regulatory / notice', client_deadline:'Client — deadline', client_general:'Client — general',
-  bank:'Bank / financial institution', prospect:'Prospective client', vendor:'Vendor / portal',
-  staff:'Staff / office', sales:'Sales / telemarketing', unclear:'Unclear'
+  bank:'Bank / financial institution', peer_professional:'Peer / professional', prospect:'Prospective client', vendor:'Vendor / portal',
+  staff:'Staff / office', personal:'Personal', sales:'Sales / telemarketing', unclear:'Unclear'
 };
 const CATEGORY_CLASS = {
   regulatory:'regulatory', client_deadline:'client', client_general:'client',
-  bank:'bank', prospect:'prospect', vendor:'vendor', staff:'staff', sales:'sales', unclear:'unclear'
+  bank:'bank', peer_professional:'peer', prospect:'prospect', vendor:'vendor', staff:'staff', personal:'personal', sales:'sales', unclear:'unclear'
 };
+
+// --- Statutory deadline calendar -----------------------------------------
+// Dates are computed here in code, never left to the AI to recall — an LLM
+// can drift or misremember an exact statutory date, so this is deliberate
+// arithmetic against a fixed calendar, not a model judgment. The AI's only
+// job is extracting compliance_type from what the caller said; this matches
+// that text against the calendar below and works out what's actually next.
+const COMPLIANCE_CALENDAR = [
+  { keywords:['44ab','tax audit'], label:'Tax Audit (Sec 44AB)', type:'annual', dates:[[9,30]] },
+  { keywords:['audit itr','itr audit case','audit case itr'], label:'ITR — audit cases', type:'annual', dates:[[10,31]] },
+  { keywords:['itr','income tax return'], label:'ITR — non-audit cases', type:'annual', dates:[[7,31]] },
+  { keywords:['advance tax'], label:'Advance Tax installment', type:'quarterly', dates:[[6,15],[9,15],[12,15],[3,15]] },
+  { keywords:['gstr-3b','gstr 3b','3b'], label:'GSTR-3B', type:'monthly', day:20 },
+  { keywords:['gstr-1','gstr 1'], label:'GSTR-1', type:'monthly', day:11 },
+  { keywords:['gstr-9','gstr 9','annual return'], label:'GSTR-9 Annual Return', type:'annual', dates:[[12,31]] },
+  { keywords:['tds return','24q','26q'], label:'TDS Return', type:'quarterly', dates:[[7,31],[10,31],[1,31],[5,31]] },
+  { keywords:['aoc-4','aoc4','mgt-7','mgt7','roc filing','company annual filing'], label:'ROC Annual Filing (approx.)', type:'annual', dates:[[10,29]], approximate:true },
+];
+
+function nextOccurrence(entry, today){
+  const y = today.getFullYear();
+  let candidates = [];
+  if(entry.type === 'monthly'){
+    for(let offset=0; offset<=1; offset++){
+      const m = today.getMonth() + offset; // 0-indexed
+      candidates.push(new Date(y, m, entry.day));
+    }
+  } else {
+    // annual or quarterly: 'dates' are [month(1-12), day]
+    for(const [m, d] of entry.dates){
+      const thisYear = new Date(y, m-1, d);
+      candidates.push(thisYear);
+      candidates.push(new Date(y+1, m-1, d)); // next year's occurrence too, in case this year's has passed
+    }
+  }
+  // keep only occurrences today or later, pick the nearest
+  const todayMidnight = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  const future = candidates.filter(c => c >= todayMidnight).sort((a,b)=>a-b);
+  return future[0] || null;
+}
+
+function computeDeadlineInfo(complianceType, today){
+  if(!complianceType) return {days_to_deadline:null, deadline_flag:null, deadline_label:null, deadline_date:null};
+  const text = complianceType.toLowerCase();
+  const entry = COMPLIANCE_CALENDAR.find(e => e.keywords.some(k => text.includes(k)));
+  if(!entry) return {days_to_deadline:null, deadline_flag:null, deadline_label:null, deadline_date:null};
+  const now = today || new Date();
+  const occurrence = nextOccurrence(entry, now);
+  if(!occurrence) return {days_to_deadline:null, deadline_flag:null, deadline_label:entry.label, deadline_date:null};
+  const todayMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const days = Math.round((occurrence - todayMidnight) / 86400000);
+  let flag = 'normal';
+  if(days <= 3) flag = 'urgent';
+  else if(days <= 15) flag = 'approaching';
+  return {
+    days_to_deadline: days,
+    deadline_flag: flag,
+    deadline_label: entry.label + (entry.approximate ? ' — approximate, varies by AGM date' : ''),
+    deadline_date: occurrence.toLocaleDateString('en-IN', {day:'numeric', month:'short', year:'numeric'})
+  };
+}
+
+// Small inline badge for deadline urgency — used in both the compact row and
+// the detail sheet so the two stay visually consistent.
+function deadlineBadgeHTML(c){
+  if(!c || !c.deadline_flag) return '';
+  const cls = c.deadline_flag === 'urgent' ? 'deadline-urgent'
+            : c.deadline_flag === 'approaching' ? 'deadline-approaching'
+            : 'deadline-normal';
+  const days = c.days_to_deadline;
+  const dayText = days === 0 ? 'Due today' : days === 1 ? 'Due tomorrow' : days < 0 ? `${Math.abs(days)}d overdue` : `${days}d to deadline`;
+  return `<span class="badge ${cls}" title="${c.deadline_label||''} · ${c.deadline_date||''}">${dayText}</span>`;
+}
 
 const SEED_RAW = [
   {call_id:'seed1', time:'09:14', daysAgo:0, caller_name:'GST Department — Ward 12', caller_relationship:'unknown',
@@ -492,7 +570,7 @@ function render(){
       html += `<div class="row" tabindex="0" onclick="openDetail(${i})" onkeydown="if(event.key==='Enter')openDetail(${i})">
         <div class="time">${formatTime(c.timestamp)}</div>
         <div class="caller">${c.caller_name}<span class="sub">${c.caller_relationship==='saved_contact'?'Saved contact':'Unknown number'}</span></div>
-        <div><span class="badge ${CATEGORY_CLASS[c.category]||'unclear'}">${CATEGORY_LABEL[c.category]||c.category}</span></div>
+        <div><span class="badge ${CATEGORY_CLASS[c.category]||'unclear'}">${CATEGORY_LABEL[c.category]||c.category}</span>${deadlineBadgeHTML(c)}</div>
         <div class="summary">${c.one_line_summary}</div>
       </div>`;
     });
@@ -532,6 +610,9 @@ function openDetail(i){
     ${c.matched_client_name?`<div class="field"><div class="label">Matched client</div><div class="value">${c.matched_client_name}</div></div>`:''}
     ${c.notice_or_reference_number?`<div class="field"><div class="label">Reference / notice number</div><div class="value mono">${c.notice_or_reference_number}</div></div>`:''}
     ${c.claimed_authority?`<div class="field"><div class="label">Claimed authority</div><div class="value">${c.claimed_authority}</div></div>`:''}
+    ${c.regulatory_body?`<div class="field"><div class="label">Regulatory body</div><div class="value">${c.regulatory_body}</div></div>`:''}
+    ${c.compliance_type?`<div class="field"><div class="label">Compliance matter</div><div class="value">${c.compliance_type}</div></div>`:''}
+    ${c.deadline_flag?`<div class="field"><div class="label">Deadline</div><div class="value">${deadlineBadgeHTML(c)} — ${c.deadline_label||''}${c.deadline_date?` (due ${c.deadline_date})`:''}</div></div>`:''}
     <div class="field"><div class="label">Transcript</div><div class="transcript">${renderBubbles(c.full_transcript)}</div></div>
     <div class="decision-row">
       <button class="primary" onclick="decide(${i},'called_back')">Mark as called back</button>
@@ -583,7 +664,9 @@ async function runTest(){
   "caller_demeanor": "normal","pushy","hostile", or "unclear",
   "assistant_reply": a short, natural spoken reply Chintan would give the caller to close out the call (1-2 sentences, warm and professional)
 }
-Categorization rules: "regulatory" = caller references tax dept, GST, ROC, ICAI, RBI, a notice/order/DIN, or a compliance deadline — this category should be used generously since missing one is costly. "bank" = caller identifies as a bank/NBFC or references loans/CC limits/audits for a bank. "client_deadline" = a filing/compliance deadline tied to a specific client matter. "sales" = unsolicited pitch unrelated to any engagement. Never invent a matched_client_name or notice number that wasn't stated.
+Categorization rules: "regulatory" = caller references tax dept, GST, ROC, ICAI, RBI, a notice/order/DIN, or a compliance deadline — this category should be used generously since missing one is costly. "bank" = caller identifies as a bank/NBFC or references loans/CC limits/audits for a bank. "client_deadline" = a filing/compliance deadline tied to a specific client matter. "peer_professional" = another CA, CA firm, articled clerk elsewhere, or professional referral contact — colleague to colleague, not client to CA. "personal" = family, friends, or personal matters unrelated to the practice, caught here because the call was declined without checking who it was — mark clearly, never treat as work. "sales" = unsolicited pitch unrelated to any engagement. Never invent a matched_client_name or notice number that wasn't stated.
+
+Two extra fields for regulatory calls specifically: "regulatory_body" — one of "Income Tax", "GST", "ROC/MCA", "ICAI", "RBI/FEMA", "Customs", "Other", or null if category isn't regulatory. "compliance_type" — a short tag naming the actual matter if the caller gave enough detail, e.g. "Tax Audit 44AB", "GSTR-9 Annual Return", "Scrutiny Assessment 143(2)", "TDS Return", "Company Annual Filing", "Stock Audit", "CPE Hours / ICAI Membership" — leave null rather than guessing if unclear.
 
 LANGUAGE HANDLING: The caller may write or speak in English, Hindi, or Gujarati, or a natural mix of these (common in Indian business calls, e.g. Hindi with English terms like "GST" or "notice" left as-is). Understand all three. Every structured field you output (one_line_summary, key_details, etc.) must always be written in English, since this is the practice's official record, regardless of which language the caller used. The one exception is assistant_reply: write that in the SAME language (or mix) the caller used, since that's what gets spoken back to them — if they wrote in Hindi, reply in Hindi; in Gujarati, reply in Gujarati; in English, reply in English. If the caller's language is unclear or mixed evenly, default assistant_reply to Hindi first, then English.`;
 
@@ -604,13 +687,15 @@ LANGUAGE HANDLING: The caller may write or speak in English, Hindi, or Gujarati,
             properties: {
               caller_name: { type: "STRING", nullable: true },
               caller_relationship: { type: "STRING", enum: ["saved_contact","unknown"] },
-              category: { type: "STRING", enum: ["regulatory","client_deadline","client_general","bank","prospect","vendor","staff","sales","unclear"] },
+              category: { type: "STRING", enum: ["regulatory","client_deadline","client_general","bank","peer_professional","prospect","vendor","staff","personal","sales","unclear"] },
               category_confidence: { type: "NUMBER" },
               one_line_summary: { type: "STRING" },
               key_details: { type: "STRING" },
               matched_client_name: { type: "STRING", nullable: true },
               notice_or_reference_number: { type: "STRING", nullable: true },
               claimed_authority: { type: "STRING", nullable: true },
+              regulatory_body: { type: "STRING", enum: ["Income Tax","GST","ROC/MCA","ICAI","RBI/FEMA","Customs","Other"], nullable: true },
+              compliance_type: { type: "STRING", nullable: true },
               caller_demeanor: { type: "STRING", enum: ["normal","pushy","hostile","unclear"] },
               assistant_reply: { type: "STRING" }
             },
@@ -629,6 +714,8 @@ LANGUAGE HANDLING: The caller may write or speak in English, Hindi, or Gujarati,
     const liveIdx = CALLS.indexOf(liveEntry);
     if(liveIdx !== -1) CALLS.splice(liveIdx, 1);
 
+    const deadlineInfo = computeDeadlineInfo(parsed.compliance_type, new Date());
+
     CALLS.unshift({
       call_id: 'test-'+Date.now(),
       timestamp: liveEntry.timestamp,
@@ -641,6 +728,12 @@ LANGUAGE HANDLING: The caller may write or speak in English, Hindi, or Gujarati,
       matched_client_name: parsed.matched_client_name || null,
       notice_or_reference_number: parsed.notice_or_reference_number || null,
       claimed_authority: parsed.claimed_authority || null,
+      regulatory_body: parsed.regulatory_body || null,
+      compliance_type: parsed.compliance_type || null,
+      days_to_deadline: deadlineInfo.days_to_deadline,
+      deadline_flag: deadlineInfo.deadline_flag,
+      deadline_label: deadlineInfo.deadline_label,
+      deadline_date: deadlineInfo.deadline_date,
       caller_demeanor: parsed.caller_demeanor || 'unclear',
       full_transcript: 'Caller: ' + input + (parsed.assistant_reply ? ('\nAssistant: ' + parsed.assistant_reply) : ''),
       user_decision: 'pending'
