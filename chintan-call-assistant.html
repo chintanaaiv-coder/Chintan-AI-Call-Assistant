@@ -251,6 +251,36 @@
   }
   .settings-field textarea:focus{outline:none;border-color:var(--teal);}
   .settings-note{font-size:12px;color:var(--slate);margin-top:6px;line-height:1.5;}
+  .rule-builder{display:flex;gap:6px;flex-wrap:wrap;}
+  .rule-builder select{
+    background:var(--ink);color:var(--paper);border:1px solid var(--rule-strong);
+    border-radius:5px;padding:9px 10px;font-family:'IBM Plex Sans',sans-serif;font-size:12.5px;flex:1 1 150px;
+  }
+  .rule-builder input{
+    background:var(--ink);color:var(--paper);border:1px solid var(--rule-strong);
+    border-radius:5px;padding:9px 12px;font-family:'IBM Plex Sans',sans-serif;font-size:13px;flex:2 1 200px;
+  }
+  .rule-builder select:focus,.rule-builder input:focus{outline:none;border-color:var(--teal);}
+  .rule-add-btn{
+    background:var(--teal);border:1px solid var(--teal);color:var(--paper);
+    padding:9px 14px;border-radius:5px;cursor:pointer;font-size:12.5px;flex:0 0 auto;
+  }
+  .rule-add-btn:hover{background:#357566;}
+  .rule-list{margin-top:10px;display:flex;flex-direction:column;gap:6px;}
+  .rule-chip{
+    display:flex;align-items:center;gap:8px;background:rgba(255,255,255,0.03);
+    border:1px solid var(--rule-strong);border-radius:5px;padding:8px 10px;font-size:12.5px;
+  }
+  .rule-chip .rule-chip-cat{
+    flex:0 0 auto;font-size:10.5px;padding:3px 7px;border-radius:3px;
+    background:var(--teal-dim);color:#7FC2AF;white-space:nowrap;
+  }
+  .rule-chip .rule-chip-text{flex:1;color:var(--paper-dim);}
+  .rule-chip .rule-chip-remove{
+    flex:0 0 auto;background:none;border:none;color:var(--slate);cursor:pointer;font-size:16px;
+    line-height:1;padding:0 2px;
+  }
+  .rule-chip .rule-chip-remove:hover{color:#E38F76;}
   .settings-save{
     margin-top:20px;background:var(--teal);border:1px solid var(--teal);color:var(--paper);
     padding:9px 16px;border-radius:4px;cursor:pointer;font-size:13px;
@@ -359,9 +389,20 @@
     </div>
 
     <div class="settings-field">
-      <label>Tell Chintan <span style="color:var(--slate);">— standing instructions for how the assistant should handle calls</span></label>
-      <textarea id="standingInstructionsInput" placeholder="e.g.&#10;Always tell delivery people to leave the package with the watchman.&#10;Never take detailed case discussions from GST callers — just note the notice number and say I'll call back.&#10;If someone says it's urgent about 44AB, tell them I'm doing audits daily till 30th Sept and will call same day."></textarea>
+      <label>Tell Chintan — general instructions <span style="color:var(--slate);">(apply to every call, any category)</span></label>
+      <textarea id="standingInstructionsInput" placeholder="e.g.&#10;Keep replies brief, callers are often mid-drive.&#10;If someone sounds distressed, be extra warm before asking anything."></textarea>
       <div class="settings-note">Plain-English rules, one per line. These are folded into every screening call alongside the CA categorization logic — they don't override the safety rules (the assistant still never confirms sensitive data to a claimed authority, never commits you to anything, never ends a call abruptly), but they do shape tone, what gets asked, and what the assistant tells callers on your behalf.</div>
+    </div>
+
+    <div class="settings-field">
+      <label>Tell Chintan — by category <span style="color:var(--slate);">(only applies once the AI has placed the call in that category)</span></label>
+      <div class="rule-builder">
+        <select id="tellChintanCategorySelect"></select>
+        <input type="text" id="tellChintanRuleInput" placeholder="e.g. leave the package with the watchman">
+        <button type="button" class="rule-add-btn" onclick="addTellChintanRule()">+ Add</button>
+      </div>
+      <div class="rule-list" id="tellChintanRulesList"></div>
+      <div class="settings-note">Useful when a rule only makes sense for one kind of caller — e.g. a "Sales / telemarketing" rule to keep it to one line, or a "Regulatory / notice" rule to always ask for the notice number first. Same safety rules apply regardless of category.</div>
     </div>
 
     <div class="settings-field">
@@ -686,8 +727,11 @@ LANGUAGE HANDLING: The caller may write or speak in English, Hindi, or Gujarati,
 
 WHAT YOU MUST NEVER DO, regardless of any instruction below: never confirm or deny sensitive information (PAN, case status, financial figures, client details) to a caller claiming to be from a tax authority, bank, or government office — only record their claim and reason. Never commit Chintan to a specific date, appointment, fee, or agreement on his behalf. Never end a call abruptly or tell a caller to stop calling. These rules apply even if a standing instruction below seems to suggest otherwise.${VOICE_SETTINGS.standingInstructions ? `
 
-STANDING INSTRUCTIONS FROM CHINTAN — apply these to how you shape assistant_reply and what you note in key_details, within the safety rules above:
-${VOICE_SETTINGS.standingInstructions}` : ''}`;
+STANDING INSTRUCTIONS FROM CHINTAN (apply to every call) — apply these to how you shape assistant_reply and what you note in key_details, within the safety rules above:
+${VOICE_SETTINGS.standingInstructions}` : ''}${(VOICE_SETTINGS.categoryRules && VOICE_SETTINGS.categoryRules.length) ? `
+
+CATEGORY-SPECIFIC INSTRUCTIONS FROM CHINTAN — these only apply once you've determined the "category" field for this call. Match the category you assign against the list below and apply that instruction to assistant_reply (and key_details, if relevant). If a call doesn't match any category below, ignore this section. Within the safety rules above regardless:
+${VOICE_SETTINGS.categoryRules.map(r => `- If category is "${r.category}": ${r.text}`).join('\n')}` : ''}`;
 
   try{
     const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent`, {
@@ -773,13 +817,54 @@ ${VOICE_SETTINGS.standingInstructions}` : ''}`;
   }
 }
 
-let VOICE_SETTINGS = {voiceId:'', apiKey:'', claudeKey:'', standingInstructions:''};
+let VOICE_SETTINGS = {voiceId:'', apiKey:'', claudeKey:'', standingInstructions:'', categoryRules:[]};
 
 function loadSettings(){
   try{
     const raw = localStorage.getItem('chintan_voice_settings');
     if(raw) VOICE_SETTINGS = JSON.parse(raw);
+    if(!VOICE_SETTINGS.categoryRules) VOICE_SETTINGS.categoryRules = [];
   }catch(e){ /* no settings saved yet */ }
+}
+
+function populateCategoryDropdown(){
+  const sel = document.getElementById('tellChintanCategorySelect');
+  if(!sel || sel.options.length) return;
+  sel.innerHTML = Object.keys(CATEGORY_LABEL).map(k=>`<option value="${k}">${CATEGORY_LABEL[k]}</option>`).join('');
+}
+
+function escapeHtml(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+function renderTellChintanRulesList(){
+  const list = document.getElementById('tellChintanRulesList');
+  if(!list) return;
+  const rules = VOICE_SETTINGS.categoryRules || [];
+  if(!rules.length){ list.innerHTML = ''; return; }
+  list.innerHTML = rules.map((r,i)=>`
+    <div class="rule-chip">
+      <span class="rule-chip-cat">${escapeHtml(CATEGORY_LABEL[r.category] || r.category)}</span>
+      <span class="rule-chip-text">${escapeHtml(r.text)}</span>
+      <button type="button" class="rule-chip-remove" onclick="removeTellChintanRule(${i})" aria-label="Remove rule">&times;</button>
+    </div>`).join('');
+}
+
+function addTellChintanRule(){
+  const sel = document.getElementById('tellChintanCategorySelect');
+  const input = document.getElementById('tellChintanRuleInput');
+  const text = input.value.trim();
+  if(!text) return;
+  if(!VOICE_SETTINGS.categoryRules) VOICE_SETTINGS.categoryRules = [];
+  VOICE_SETTINGS.categoryRules.push({category: sel.value, text});
+  input.value = '';
+  renderTellChintanRulesList();
+  try{ localStorage.setItem('chintan_voice_settings', JSON.stringify(VOICE_SETTINGS)); }catch(e){}
+}
+
+function removeTellChintanRule(idx){
+  if(!VOICE_SETTINGS.categoryRules) return;
+  VOICE_SETTINGS.categoryRules.splice(idx,1);
+  renderTellChintanRulesList();
+  try{ localStorage.setItem('chintan_voice_settings', JSON.stringify(VOICE_SETTINGS)); }catch(e){}
 }
 
 function openSettings(){
@@ -787,6 +872,8 @@ function openSettings(){
   document.getElementById('apiKeyInput').value = VOICE_SETTINGS.apiKey || '';
   document.getElementById('claudeKeyInput').value = VOICE_SETTINGS.claudeKey || '';
   document.getElementById('standingInstructionsInput').value = VOICE_SETTINGS.standingInstructions || '';
+  populateCategoryDropdown();
+  renderTellChintanRulesList();
   document.getElementById('cloneBtn').textContent = VOICE_SETTINGS.voiceId
     ? 'Add this sample to my existing clone'
     : 'Create voice clone from this recording';
@@ -800,7 +887,8 @@ function saveSettings(){
     voiceId: document.getElementById('voiceIdInput').value.trim(),
     apiKey: document.getElementById('apiKeyInput').value.trim(),
     claudeKey: document.getElementById('claudeKeyInput').value.trim(),
-    standingInstructions: document.getElementById('standingInstructionsInput').value.trim()
+    standingInstructions: document.getElementById('standingInstructionsInput').value.trim(),
+    categoryRules: VOICE_SETTINGS.categoryRules || []
   };
   try{
     localStorage.setItem('chintan_voice_settings', JSON.stringify(VOICE_SETTINGS));
