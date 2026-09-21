@@ -206,6 +206,19 @@
     font-family:'IBM Plex Sans',sans-serif;font-size:13.5px;resize:vertical;
   }
   textarea:focus{outline:none;border-color:var(--teal);}
+  .mic-row{display:flex;align-items:center;gap:10px;margin-top:10px;flex-wrap:wrap;}
+  .mic-row select{
+    background:var(--ink);color:var(--paper);border:1px solid var(--rule-strong);
+    border-radius:5px;padding:8px 10px;font-family:'IBM Plex Sans',sans-serif;font-size:12.5px;
+  }
+  .mic-btn{
+    background:var(--teal);border:none;color:var(--paper);
+    padding:8px 14px;border-radius:20px;cursor:pointer;font-size:12.5px;
+    display:inline-flex;align-items:center;gap:7px;font-weight:500;
+  }
+  .mic-btn.listening{background:var(--rose);}
+  .mic-btn .dot{width:7px;height:7px;border-radius:50%;background:var(--paper);}
+  .mic-btn.listening .dot{animation:pulse 1s ease-in-out infinite;}
   .test-actions{display:flex;justify-content:space-between;align-items:center;margin-top:10px;flex-wrap:wrap;gap:10px;}
   .run-btn{
     background:var(--brass);color:#241D08;border:none;font-weight:600;
@@ -366,6 +379,15 @@
     <h3>Test the screening AI</h3>
     <p>Paste a sample of what a caller might say (or write a rough scenario), and the same categorization logic that would run on a real declined call will process it live — extracting the reason, category, and any notice or client references, using the rules from the spec. Try it in English, Hindi, or Gujarati — Chintan replies to the caller in whichever language they used, while everything on your dashboard stays in English.</p>
     <textarea id="testInput" placeholder="e.g. Hi, this is regarding your GST return for FY 24-25, there's a discrepancy notice under section 61, reference number ZD290824... (or try this in Hindi/Gujarati)"></textarea>
+    <div class="mic-row">
+      <select id="micLangSelect">
+        <option value="en-IN">English</option>
+        <option value="hi-IN">Hindi</option>
+        <option value="gu-IN">Gujarati</option>
+      </select>
+      <button type="button" class="mic-btn" id="micTestBtn" onclick="toggleSpeechInput()"><span class="dot"></span><span id="micTestBtnLabel">🎤 Speak instead of typing</span></button>
+      <span class="test-status" id="micStatus"></span>
+    </div>
     <div class="test-actions">
       <button class="run-btn" id="runBtn" onclick="runTest()">Categorize this call</button>
       <span class="test-status" id="testStatus"></span>
@@ -684,6 +706,86 @@ async function decide(i, decision){
   await saveCalls();
   render();
   openDetail(i);
+}
+
+// --- Speech-to-text for the test panel -----------------------------------
+// Uses the browser's own built-in speech recognition (webkitSpeechRecognition)
+// rather than any paid API — free, and supported on iOS Safari 14.5+ as well
+// as desktop Chrome/Edge/Safari. This closes the "type a sample line" gap:
+// you can actually speak a caller's line and see it land in the text box,
+// in whichever of the three languages you pick, before running it through
+// the same categorization pipeline as a typed line.
+let SPEECH_RECOGNIZER = null;
+let SPEECH_LISTENING = false;
+
+function toggleSpeechInput(){
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  const btn = document.getElementById('micTestBtn');
+  const label = document.getElementById('micTestBtnLabel');
+  const status = document.getElementById('micStatus');
+
+  if(!SpeechRecognition){
+    status.className = 'test-status err';
+    status.textContent = 'Speech input isn\'t supported in this browser — type your test line instead.';
+    return;
+  }
+
+  if(SPEECH_LISTENING){
+    SPEECH_RECOGNIZER.stop();
+    return;
+  }
+
+  const langSelect = document.getElementById('micLangSelect');
+  SPEECH_RECOGNIZER = new SpeechRecognition();
+  SPEECH_RECOGNIZER.lang = langSelect.value;
+  SPEECH_RECOGNIZER.interimResults = true;
+  SPEECH_RECOGNIZER.continuous = true;
+
+  const testInput = document.getElementById('testInput');
+  const baseText = testInput.value.trim();
+  let finalTranscript = '';
+
+  SPEECH_RECOGNIZER.onstart = () => {
+    SPEECH_LISTENING = true;
+    btn.classList.add('listening');
+    label.textContent = '● Listening… tap to stop';
+    status.className = 'test-status';
+    status.textContent = 'Speak your test caller line now.';
+  };
+
+  SPEECH_RECOGNIZER.onresult = (event) => {
+    let interim = '';
+    for(let i = event.resultIndex; i < event.results.length; i++){
+      const transcript = event.results[i][0].transcript;
+      if(event.results[i].isFinal) finalTranscript += transcript + ' ';
+      else interim += transcript;
+    }
+    const combined = (baseText ? baseText + ' ' : '') + finalTranscript + interim;
+    testInput.value = combined.trim();
+  };
+
+  SPEECH_RECOGNIZER.onerror = (event) => {
+    status.className = 'test-status err';
+    status.textContent = event.error === 'not-allowed'
+      ? 'Microphone access was blocked — allow it in Settings and try again.'
+      : `Speech recognition error: ${event.error}`;
+  };
+
+  SPEECH_RECOGNIZER.onend = () => {
+    SPEECH_LISTENING = false;
+    btn.classList.remove('listening');
+    label.textContent = '🎤 Speak instead of typing';
+    if(status.className !== 'test-status err'){
+      status.textContent = finalTranscript.trim() ? 'Got it — review the text, then Categorize this call.' : '';
+    }
+  };
+
+  try{
+    SPEECH_RECOGNIZER.start();
+  }catch(e){
+    status.className = 'test-status err';
+    status.textContent = 'Could not start microphone — try again.';
+  }
 }
 
 async function runTest(){
