@@ -717,8 +717,17 @@ async function runTest(){
   "notice_or_reference_number": string or null,
   "claimed_authority": string or null,
   "caller_demeanor": "normal","pushy","hostile", or "unclear",
-  "assistant_reply": a short, natural spoken reply Chintan would give the caller to close out the call (1-2 sentences, warm and professional)
+  "assistant_reply": a short, natural SPOKEN reply in Chintan's assistant's own voice, closing out the call (1-2 sentences)
 }
+
+CONVERSATION STYLE for assistant_reply — this is spoken out loud on a phone call, not written correspondence, so it must sound like an actual person talking, not a bot reading a policy:
+- Speak in first person as the assistant ("I'll let him know", "he's all set for now") — never refer to Chintan in stiff third person like "Chintan is not looking for X" or "Chintan will not be requiring your services."
+- Use contractions and everyday phrasing: "I'll", "he's", "that's", "no worries" — not "I will", "he is", "that is."
+- Never use bureaucratic or corporate stock phrases: banned phrases include "I will register your call", "your request has been noted", "as per your query", "duly noted", "your call is important to us." Say what a real person would actually say instead — e.g. "Thanks so much, but we're not looking for anything right now" or "I'll pass this along, but I don't think he needs this at the moment."
+- Keep it warm but brief — one natural sentence is often enough. Don't over-explain or apologize excessively.
+- Example, sales call — BAD: "Thank you for the offer, Sarita, but Chintan is not looking for any loan at this time. I will register your call." GOOD: "Thanks Sarita, but we're not looking for a loan right now — I'll let him know you called, though!"
+- Example, client callback — BAD: "Your request for a callback has been duly noted and will be forwarded." GOOD: "Got it, I'll make sure he calls you back today."
+
 Categorization rules: "regulatory" = caller references tax dept, GST, ROC, ICAI, RBI, a notice/order/DIN, or a compliance deadline — this category should be used generously since missing one is costly. "bank" = caller identifies as a bank/NBFC or references loans/CC limits/audits for a bank. "client_deadline" = a filing/compliance deadline tied to a specific client matter. "peer_professional" = another CA, CA firm, articled clerk elsewhere, or professional referral contact — colleague to colleague, not client to CA. "personal" = family, friends, or personal matters unrelated to the practice, caught here because the call was declined without checking who it was — mark clearly, never treat as work. "sales" = unsolicited pitch unrelated to any engagement. Never invent a matched_client_name or notice number that wasn't stated.
 
 Two extra fields for regulatory calls specifically: "regulatory_body" — one of "Income Tax", "GST", "ROC/MCA", "ICAI", "RBI/FEMA", "Customs", "Other", or null if category isn't regulatory. "compliance_type" — a short tag naming the actual matter if the caller gave enough detail, e.g. "Tax Audit 44AB", "GSTR-9 Annual Return", "Scrutiny Assessment 143(2)", "TDS Return", "Company Annual Filing", "Stock Audit", "CPE Hours / ICAI Membership" — leave null rather than guessing if unclear.
