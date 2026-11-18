@@ -151,3 +151,13 @@ def test_exotel_rejects_wrong_secret(client):
     with pytest.raises(Exception):
         with client.websocket_connect("/exotel/stream/wrong") as ws:
             ws.receive_text()
+
+
+def test_iphone_web_app_is_allowed_by_cors(client):
+    r = client.options("/api/calls", headers={"Origin": "https://chintanaaiv-coder.github.io",
+                                              "Access-Control-Request-Method": "GET",
+                                              "Access-Control-Request-Headers": "authorization"})
+    assert r.headers.get("access-control-allow-origin") == "https://chintanaaiv-coder.github.io"
+    r = client.options("/api/calls", headers={"Origin": "https://evil.example",
+                                              "Access-Control-Request-Method": "GET"})
+    assert "access-control-allow-origin" not in r.headers

@@ -1,4 +1,4 @@
-name: Build Chintan app
+name: Build Chintan app (Android APK + iPhone web app)
 
 on:
   push:
@@ -25,13 +25,15 @@ jobs:
         with:
           channel: stable
           cache: true
-      - name: Create Android and iOS projects
-        run: flutter create --org com.chintanai --project-name chintan_assistant --platforms android,ios .
+      - name: Create Android, iOS and web projects
+        run: flutter create --org com.chintanai --project-name chintan_assistant --platforms android,ios,web .
       - name: Add Chintan's call screening
         run: python3 tool/patch_android.py
       - run: flutter pub get
       - name: App icon
         run: dart run flutter_launcher_icons
+      - name: Name the web app
+        run: python3 tool/patch_web.py
       - name: Check the code
         run: flutter analyze --no-fatal-infos --no-fatal-warnings
       - run: flutter test
@@ -52,3 +54,17 @@ jobs:
             --title "Chintan AI Call Assistant (latest Android build)" \
             --notes "Built from ${GITHUB_SHA::7}. Open this page on your Android phone and tap the .apk to install." \
             --latest
+      - name: Build iPhone web app
+        run: flutter build web --release --base-href /Chintan-AI-Call-Assistant/iphone/
+      - name: Publish iPhone web app to GitHub Pages (iphone/ folder)
+        working-directory: .
+        run: |
+          rm -rf iphone
+          cp -r app/build/web iphone
+          touch .nojekyll
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add iphone .nojekyll
+          git commit -m "Update iPhone web app (${GITHUB_SHA::7})" || exit 0
+          git pull --rebase origin main
+          git push origin HEAD:main

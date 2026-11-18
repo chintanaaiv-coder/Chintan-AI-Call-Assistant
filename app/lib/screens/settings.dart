@@ -127,10 +127,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 child: const Text('When switched off')),
             TextButton(onPressed: () => _dial('##002#'), child: const Text('Turn all forwarding off')),
           ]),
-          const Padding(
-            padding: EdgeInsets.only(top: 6),
-            child: Text('On iPhone: set up the same codes, then decline a call to send it to Chintan.',
-                style: TextStyle(color: C.paperDim, fontSize: 12)),
+          Padding(
+            padding: const EdgeInsets.only(top: 6),
+            child: SelectableText(
+                'On iPhone, type these in the Phone app keypad and press call:\n'
+                '  When busy / declined:  **67*${number.isEmpty ? 'NUMBER' : number}#\n'
+                '  When not answered:  **61*${number.isEmpty ? 'NUMBER' : number}#\n'
+                '  When switched off:  **62*${number.isEmpty ? 'NUMBER' : number}#\n'
+                'Then decline a call to send it to Chintan. To undo all: ##002#',
+                style: const TextStyle(color: C.paperDim, fontSize: 12)),
           ),
 
           if (appState.api.configured) ...[

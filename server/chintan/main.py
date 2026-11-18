@@ -12,6 +12,7 @@ from pathlib import Path
 
 import httpx
 from fastapi import Depends, FastAPI, Header, HTTPException, Query, Request, WebSocket, WebSocketDisconnect
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, PlainTextResponse
 from pydantic import BaseModel
 
@@ -61,6 +62,10 @@ class State:
 def create_app(cfg: Config | None = None) -> FastAPI:
     cfg = cfg or Config()
     app = FastAPI(title="Chintan AI Call Assistant")
+    # The iPhone web app runs on GitHub Pages, so the browser needs permission to call this server.
+    # Safe to allow broadly: every API call still needs the app token.
+    app.add_middleware(CORSMiddleware, allow_origins=cfg.cors_origins, allow_methods=["*"],
+                       allow_headers=["Authorization", "Content-Type"])
     s = State(cfg)
     app.state.s = s
 

@@ -1,14 +1,13 @@
-import 'dart:io' show Platform;
-
+import 'package:flutter/foundation.dart' show TargetPlatform, defaultTargetPlatform, kIsWeb;
 import 'package:flutter/services.dart';
 
-/// Bridge to the Android call-screening service. On iPhone these do nothing:
-/// iOS does not let apps screen calls, so calls reach Chintan only when you
-/// decline them (carrier forwarding).
+/// Bridge to the Android call-screening service. On iPhone and in the web
+/// version these do nothing: iOS does not let apps screen calls, so calls
+/// reach Chintan only when you decline them (carrier forwarding).
 class NativeScreening {
   static const _ch = MethodChannel('chintan/native');
 
-  static bool get supported => Platform.isAndroid;
+  static bool get supported => !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
 
   static Future<bool> hasRole() async {
     if (!supported) return false;

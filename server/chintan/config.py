@@ -17,6 +17,9 @@ class Config:
     app_token: str = field(default_factory=lambda: _env("APP_TOKEN"))
     exotel_secret: str = field(default_factory=lambda: _env("EXOTEL_STREAM_SECRET"))
     data_dir: Path = field(default_factory=lambda: Path(_env("DATA_DIR", "./data")))
+    # Websites allowed to use the API from a browser (the iPhone web app on GitHub Pages).
+    cors_origins: list[str] = field(default_factory=lambda: [
+        o.strip() for o in _env("CORS_ORIGINS", "https://chintanaaiv-coder.github.io").split(",") if o.strip()])
 
     # AI providers. LLM_PROVIDER: gemini | claude | mock
     llm_provider: str = field(default_factory=lambda: _env("LLM_PROVIDER", "gemini"))

@@ -16,6 +16,11 @@ Every change to `app/` builds a new APK automatically. Download the latest from
 **Releases -> "Chintan AI Call Assistant (latest Android build)"** on your phone and
 tap the `.apk` to install (allow "install unknown apps" for your browser once).
 
+## Get it on iPhone
+
+Open **https://chintanaaiv-coder.github.io/Chintan-AI-Call-Assistant/iphone/** in Safari,
+tap Share -> **Add to Home Screen**. It updates itself whenever the app changes.
+
 ## What it does
 
 - Screens calls (all calls, or only unknown numbers) and shows a live transcript.

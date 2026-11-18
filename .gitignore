@@ -12,3 +12,4 @@ server/data/
 server/.env
 __pycache__/
 .pytest_cache/
+app/web/
