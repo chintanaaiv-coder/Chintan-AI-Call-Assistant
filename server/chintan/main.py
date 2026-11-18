@@ -22,6 +22,7 @@ from .phone import ExotelCall, connect_after_stream
 from .rules import CATEGORIES
 from .session import CallSession, Hub
 from .speech import Speech
+from .style import clean_example, redact
 from .store import Store
 
 logging.basicConfig(level=logging.INFO)
@@ -47,6 +48,11 @@ class Number(BaseModel):
 
 class SimStart(BaseModel):
     caller_number: str | None = None
+
+
+class ExampleIn(BaseModel):
+    title: str = ""
+    text: str
 
 
 class State:
@@ -160,6 +166,24 @@ def create_app(cfg: Config | None = None) -> FastAPI:
     def unmute(number: str):
         s.store.unmute(number)
         return {"muted": s.store.muted_numbers()}
+
+    # --- "Teach Chintan how I talk" ---
+    @app.get("/api/examples", dependencies=[Depends(auth)])
+    def list_examples():
+        return {"examples": s.store.examples()}
+
+    @app.post("/api/examples", dependencies=[Depends(auth)])
+    def add_example(body: ExampleIn):
+        text = clean_example(body.text)
+        if len(text) < 40:
+            raise HTTPException(400, "That's too short to learn from. Paste a longer part of a call.")
+        title = (body.title.strip() or text.split("\n")[0])[:80]
+        return s.store.add_example(redact(title), text)
+
+    @app.delete("/api/examples/{example_id}", dependencies=[Depends(auth)])
+    def delete_example(example_id: int):
+        s.store.delete_example(example_id)
+        return {"deleted": example_id}
 
     # --- text simulator: test the AI by typing what a caller says ---
 

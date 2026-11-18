@@ -30,6 +30,12 @@ CREATE TABLE IF NOT EXISTS turns (
 CREATE INDEX IF NOT EXISTS turns_call ON turns(call_id);
 CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS muted (number TEXT PRIMARY KEY, added_at REAL NOT NULL);
+CREATE TABLE IF NOT EXISTS examples (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  title TEXT NOT NULL,
+  text TEXT NOT NULL,
+  created_at REAL NOT NULL
+);
 """
 
 DEFAULT_SETTINGS = {
@@ -142,3 +148,15 @@ class Store:
 
     def muted_numbers(self) -> list[str]:
         return [r["number"] for r in self._exec("SELECT number FROM muted ORDER BY added_at DESC").fetchall()]
+
+    # --- "how I talk" examples ---
+    def add_example(self, title: str, text: str) -> dict:
+        now = time.time()
+        cur = self._exec("INSERT INTO examples(title, text, created_at) VALUES (?,?,?)", (title, text, now))
+        return {"id": cur.lastrowid, "title": title, "text": text, "created_at": now}
+
+    def examples(self) -> list[dict]:
+        return [dict(r) for r in self._exec("SELECT * FROM examples ORDER BY created_at DESC").fetchall()]
+
+    def delete_example(self, example_id: int) -> None:
+        self._exec("DELETE FROM examples WHERE id=?", (example_id,))

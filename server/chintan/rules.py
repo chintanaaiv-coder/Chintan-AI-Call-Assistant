@@ -6,6 +6,8 @@ override them.
 """
 from __future__ import annotations
 
+from .style import examples_prompt
+
 CATEGORIES: dict[str, str] = {
     "spam_scam": "Spam / scam risk",
     "regulatory": "Regulatory / notice",
@@ -40,7 +42,7 @@ CATEGORY_GUIDE = """CATEGORIES: "spam_scam" = urgency/fear pressure, asks for OT
 
 
 def build_system_prompt(owner_name: str, standing_instructions: str = "",
-                        category_rules: list[dict] | None = None) -> str:
+                        category_rules: list[dict] | None = None, examples: list[dict] | None = None) -> str:
     """The prompt for one conversational turn. The model replies with JSON (see TURN_SCHEMA)."""
     rules = "\n".join(f"- {r['category']}: {r['text']}" for r in (category_rules or []) if r.get("text"))
     extra = ""
@@ -59,7 +61,7 @@ Each turn you get the conversation so far and reply with ONE JSON object only:
 
 Regulatory only: "regulatory_body" ({' / '.join(REGULATORY_BODIES)}, else null); "compliance_type" (short tag only if stated, e.g. "Tax Audit 44AB", else null - never guess).
 
-{SAFETY_RULES}{extra}"""
+{SAFETY_RULES}{extra}{examples_prompt(owner_name, examples or [])}"""
 
 
 # JSON schema for a turn (Gemini responseSchema format; also used to validate Claude output).

@@ -4,6 +4,7 @@ import '../main.dart';
 import '../theme.dart';
 import 'call_screen.dart';
 import 'settings.dart';
+import 'teach.dart';
 
 /// The call log: every screened call, newest first, with its category and summary.
 class HomeScreen extends StatelessWidget {
@@ -24,6 +25,13 @@ class HomeScreen extends StatelessWidget {
                 tooltip: 'Test a call',
                 icon: const Icon(Icons.science_outlined),
                 onPressed: s.api.configured ? () => _startTestCall(context) : null,
+              ),
+              IconButton(
+                tooltip: 'Teach Chintan how I talk',
+                icon: const Icon(Icons.record_voice_over_outlined),
+                onPressed: s.api.configured
+                    ? () => Navigator.push(context, MaterialPageRoute(builder: (_) => const TeachScreen()))
+                    : null,
               ),
               IconButton(
                 tooltip: 'Settings',

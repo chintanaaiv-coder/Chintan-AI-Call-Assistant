@@ -21,7 +21,5 @@ services:
         value: gemini
       - key: GEMINI_API_KEY
         sync: false
-      - key: ELEVENLABS_API_KEY
-        sync: false
-      - key: ELEVENLABS_VOICE_ID
-        sync: false
+      - key: SPEECH_PROVIDER
+        value: gemini        # switch to elevenlabs later for your own cloned voice

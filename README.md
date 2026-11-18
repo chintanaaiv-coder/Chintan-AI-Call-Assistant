@@ -6,7 +6,7 @@ blocks or decides on its own.
 
 | Folder | What it is |
 | --- | --- |
-| `server/` | The brain: answers forwarded calls (Exotel), talks in your cloned voice (ElevenLabs), applies the CA rules (Gemini or Claude), saves transcripts and recordings. |
+| `server/` | The brain: answers forwarded calls (Exotel), understands and speaks with Gemini (or your ElevenLabs cloned voice), applies the CA rules, learns how you talk from your call transcripts, saves transcripts and recordings. |
 | `app/` | The Flutter app for Android and iPhone: call log, live call screen, recordings, WhatsApp, snooze, settings. |
 | `chintan-call-assistant.html` | The original web mockup, kept for reference. |
 
@@ -31,6 +31,7 @@ tap Share -> **Add to Home Screen**. It updates itself whenever the app changes.
 - During a call: send a line for Chintan to say (quick replies or typed, said word for word), Join, or Wrap up.
 - After a call: summary, recording (both voices), transcript, Call back, WhatsApp (you edit the draft first), Mute caller.
 - Snooze with auto-resume.
+- **Teach Chintan how I talk:** paste your real call transcripts; Chintan copies your tone and phrasing (numbers and IDs blanked out).
 - A **Test a call** button: type what a caller says and watch Chintan respond, no phone needed.
 
 Setup: see [docs/SETUP.md](docs/SETUP.md).

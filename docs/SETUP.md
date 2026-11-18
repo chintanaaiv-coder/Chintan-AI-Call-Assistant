@@ -6,21 +6,31 @@ Four parts, in this order. You can stop after step 2 and already test everything
 
 | What | Where | Used for |
 | --- | --- | --- |
-| Gemini API key | aistudio.google.com (the same key as the web mockup) | The AI brain. Or use a Claude key: set `LLM_PROVIDER=claude`. |
-| ElevenLabs API key + voice ID | elevenlabs.io (the voice clone you made in the mockup) | Speaking in your voice and understanding the caller |
+| Gemini API key | aistudio.google.com (the same key as the web mockup) | Everything: the AI brain, understanding the caller and speaking. Free tier to start. |
+| ElevenLabs (optional, later) | elevenlabs.io, paid Starter plan | Only if you want Chintan to speak in your own cloned voice: set `SPEECH_PROVIDER=elevenlabs`. |
 | Exotel account + a virtual number | exotel.com | The phone number calls are forwarded to |
 | Render account | render.com | Runs the server 24/7 (about $7/month for the plan with storage) |
 
 ## 2. Put the server online (Render)
 
 1. On render.com: **New -> Blueprint**, pick the `Chintan-AI-Call-Assistant` repo. It reads `render.yaml`.
-2. Fill in `GEMINI_API_KEY`, `ELEVENLABS_API_KEY`, `ELEVENLABS_VOICE_ID` when asked.
+2. Fill in `GEMINI_API_KEY` when asked. That's the only key you need.
    `APP_TOKEN` and `EXOTEL_STREAM_SECRET` are generated for you: open the service's
    **Environment** tab to copy them.
 3. When it's live, open `https://<your-service>.onrender.com/health`. `problems` lists anything still missing.
 
 **Try it now:** install the app, Settings -> paste the server address and `APP_TOKEN` -> Save and connect.
 Then tap the flask icon (Test a call) and type what a caller would say.
+
+> **Privacy:** on Gemini's free tier Google may use the data to improve its products; on the paid tier it
+> doesn't. Fine for testing; switch the key's project to paid billing before real client calls.
+
+### Teach Chintan how you talk
+
+App -> the speaking-head icon -> **Add a call**. Paste transcripts of your real calls (iPhone: record the call,
+then Notes -> Call Recordings -> transcript -> copy). Chintan reads a few similar ones before each reply and copies
+your tone and Hindi/English mix. Numbers, PAN, Aadhaar, amounts and emails are blanked out automatically; remove
+client names yourself. Start with 3-5 typical calls.
 
 ## 3. Connect the phone number (Exotel)
 

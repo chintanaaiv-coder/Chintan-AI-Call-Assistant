@@ -16,6 +16,7 @@ from fastapi import WebSocket
 from .ai import Brain
 from .deadlines import deadline_info
 from .store import Store
+from .style import pick_examples
 
 SpeakFn = Callable[[str], Awaitable[None]]
 
@@ -81,7 +82,9 @@ class CallSession:
         if not text or self.ended.is_set():
             return None
         await self._add("caller", text)
-        result = await self.brain.next_turn(self.turns, self.caller_number, self.store.settings())
+        conversation = " ".join(t["text"] for t in self.turns)
+        examples = pick_examples(self.store.examples(), conversation)
+        result = await self.brain.next_turn(self.turns, self.caller_number, self.store.settings(), examples)
         if self.ended.is_set():  # owner joined or ended while the AI was thinking
             return result
         self.analysis = {k: v for k, v in result.items() if k not in ("say", "end_call")}

@@ -4,6 +4,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../main.dart';
 import '../native.dart';
 import '../theme.dart';
+import 'teach.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -139,6 +140,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
 
           if (appState.api.configured) ...[
+            _h('Teach Chintan how I talk'),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.record_voice_over_outlined, color: C.teal),
+              title: const Text('Add examples from your real calls'),
+              subtitle: const Text('So Chintan sounds like you: your words and tone'),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const TeachScreen())),
+            ),
             _h('Tell Chintan'),
             TextField(
               controller: _instructions,

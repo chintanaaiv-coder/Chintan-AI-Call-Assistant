@@ -28,6 +28,14 @@ class Config:
     anthropic_api_key: str = field(default_factory=lambda: _env("ANTHROPIC_API_KEY"))
     claude_model: str = field(default_factory=lambda: _env("CLAUDE_MODEL", "claude-haiku-5-5"))
 
+    # Speech (understanding callers + speaking). SPEECH_PROVIDER: gemini (default) | elevenlabs
+    speech_provider: str = field(default_factory=lambda: _env("SPEECH_PROVIDER", "gemini"))
+    gemini_tts_model: str = field(default_factory=lambda: _env("GEMINI_TTS_MODEL", "gemini-3.1-flash-tts-preview"))
+    gemini_voice: str = field(default_factory=lambda: _env("GEMINI_VOICE", "Kore"))
+    voice_style: str = field(default_factory=lambda: _env(
+        "VOICE_STYLE", "Say this warmly and naturally, like a polite Indian office assistant on the phone"))
+
+    # Only needed if SPEECH_PROVIDER=elevenlabs (your cloned voice; paid ElevenLabs plan)
     elevenlabs_api_key: str = field(default_factory=lambda: _env("ELEVENLABS_API_KEY"))
     elevenlabs_voice_id: str = field(default_factory=lambda: _env("ELEVENLABS_VOICE_ID"))
     tts_model: str = field(default_factory=lambda: _env("ELEVENLABS_TTS_MODEL", "eleven_flash_v2_5"))
@@ -50,7 +58,9 @@ class Config:
             problems.append("GEMINI_API_KEY is not set.")
         if self.llm_provider == "claude" and not self.anthropic_api_key:
             problems.append("ANTHROPIC_API_KEY is not set.")
-        if not (self.elevenlabs_api_key and self.elevenlabs_voice_id):
+        if self.speech_provider == "gemini" and not self.gemini_api_key and self.llm_provider != "gemini":
+            problems.append("GEMINI_API_KEY is not set: real phone calls need it for speech.")
+        if self.speech_provider == "elevenlabs" and not (self.elevenlabs_api_key and self.elevenlabs_voice_id):
             problems.append("ElevenLabs key or voice ID missing: real phone calls need them (the text simulator works without).")
         if not self.exotel_secret:
             problems.append("EXOTEL_STREAM_SECRET is not set: real phone calls are switched off.")

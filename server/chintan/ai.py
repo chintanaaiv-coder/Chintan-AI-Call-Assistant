@@ -35,9 +35,10 @@ class Brain:
         self.cfg = cfg
         self.http = http or httpx.AsyncClient(timeout=20)
 
-    async def next_turn(self, turns: list[dict], caller_number: str | None, settings: dict) -> dict:
+    async def next_turn(self, turns: list[dict], caller_number: str | None, settings: dict,
+                        examples: list[dict] | None = None) -> dict:
         system = build_system_prompt(self.cfg.owner_name, settings.get("standing_instructions", ""),
-                                     settings.get("category_rules", []))
+                                     settings.get("category_rules", []), examples)
         user = _user_prompt(turns, caller_number)
         provider = self.cfg.llm_provider
         try:
