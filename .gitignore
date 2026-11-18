@@ -1,0 +1,14 @@
+# Flutter (platform folders are generated in CI by `flutter create` + tool/patch_android.py)
+app/android/
+app/ios/
+app/build/
+app/.dart_tool/
+app/.flutter-plugins*
+app/pubspec.lock
+app/*.iml
+app/.metadata
+# Server
+server/data/
+server/.env
+__pycache__/
+.pytest_cache/

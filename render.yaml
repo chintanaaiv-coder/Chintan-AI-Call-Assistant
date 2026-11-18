@@ -1,0 +1,27 @@
+# One-click deploy on Render: dashboard -> New -> Blueprint -> pick this repo.
+services:
+  - type: web
+    name: chintan-server
+    runtime: docker
+    rootDir: server
+    plan: starter          # needs a paid plan for the disk; free instances sleep and lose data
+    healthCheckPath: /health
+    disk:
+      name: chintan-data
+      mountPath: /data
+      sizeGB: 1
+    envVars:
+      - key: OWNER_NAME
+        value: Chintan
+      - key: APP_TOKEN
+        generateValue: true
+      - key: EXOTEL_STREAM_SECRET
+        generateValue: true
+      - key: LLM_PROVIDER
+        value: gemini
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: ELEVENLABS_API_KEY
+        sync: false
+      - key: ELEVENLABS_VOICE_ID
+        sync: false
