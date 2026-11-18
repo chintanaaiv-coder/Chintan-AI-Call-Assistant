@@ -4,12 +4,14 @@ services:
     name: chintan-server
     runtime: docker
     rootDir: server
-    plan: starter          # needs a paid plan for the disk; free instances sleep and lose data
+    # Free plan for testing: sleeps after ~15 min idle and does not keep data across restarts.
+    # For real calls change to:  plan: starter  and add the disk below (about $7.25/month).
+    #   disk:
+    #     name: chintan-data
+    #     mountPath: /data
+    #     sizeGB: 1
+    plan: free
     healthCheckPath: /health
-    disk:
-      name: chintan-data
-      mountPath: /data
-      sizeGB: 1
     envVars:
       - key: OWNER_NAME
         value: Chintan
