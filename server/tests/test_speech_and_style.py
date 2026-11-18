@@ -102,6 +102,6 @@ def test_gemini_speak_and_transcribe():
     tts_path, tts_body = seen[0]
     assert tts_path.endswith("gemini-3.1-flash-tts-preview:generateContent")
     assert tts_body["generationConfig"]["responseModalities"] == ["AUDIO"]
-    assert tts_body["generationConfig"]["speechConfig"]["voiceConfig"]["prebuiltVoiceConfig"]["voiceName"] == "Kore"
+    assert tts_body["generationConfig"]["speechConfig"]["voiceConfig"]["prebuiltVoiceConfig"]["voiceName"] == "Charon"
     stt_body = seen[1][1]
     assert stt_body["contents"][0]["parts"][1]["inlineData"]["mimeType"] == "audio/wav"

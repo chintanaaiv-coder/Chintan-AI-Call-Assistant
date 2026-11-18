@@ -31,9 +31,9 @@ class Config:
     # Speech (understanding callers + speaking). SPEECH_PROVIDER: gemini (default) | elevenlabs
     speech_provider: str = field(default_factory=lambda: _env("SPEECH_PROVIDER", "gemini"))
     gemini_tts_model: str = field(default_factory=lambda: _env("GEMINI_TTS_MODEL", "gemini-3.1-flash-tts-preview"))
-    gemini_voice: str = field(default_factory=lambda: _env("GEMINI_VOICE", "Kore"))
+    gemini_voice: str = field(default_factory=lambda: _env("GEMINI_VOICE", "Charon"))
     voice_style: str = field(default_factory=lambda: _env(
-        "VOICE_STYLE", "Say this warmly and naturally, like a polite Indian office assistant on the phone"))
+        "VOICE_STYLE", "Say this warmly and naturally, like a polite Indian man working as an office assistant, on the phone"))
 
     # Only needed if SPEECH_PROVIDER=elevenlabs (your cloned voice; paid ElevenLabs plan)
     elevenlabs_api_key: str = field(default_factory=lambda: _env("ELEVENLABS_API_KEY"))
