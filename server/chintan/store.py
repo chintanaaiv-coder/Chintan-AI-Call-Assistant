@@ -8,6 +8,8 @@ import time
 import uuid
 from pathlib import Path
 
+from .rules import DEFAULT_CATEGORY_RULES
+
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS calls (
   id TEXT PRIMARY KEY,
@@ -41,12 +43,15 @@ CREATE TABLE IF NOT EXISTS examples (
 DEFAULT_SETTINGS = {
     "snoozed_until": 0,            # unix time; 0 = not snoozed
     "standing_instructions": "",
-    "category_rules": [],          # [{"category": "...", "text": "..."}]
+    "category_rules": DEFAULT_CATEGORY_RULES,  # [{"category": "...", "text": "..."}], editable in the app
     "quick_replies": [
-        "Please email the notice to my office.",
-        "He'll call you back after 6 pm.",
+        "Thanks, but we're not looking for a loan right now.",
+        "Sorry, client information is confidential and can't be shared.",
+        "Please email the notice to my office, I'll reply today.",
+        "I'm in a meeting, I'll call you back after 6 pm.",
         "Please send the documents on WhatsApp.",
-        "Leave the parcel with the watchman.",
+        "Please leave the parcel with the watchman.",
+        "Main abhi busy hoon, shaam ko call karta hoon.",
     ],
 }
 
@@ -122,7 +127,7 @@ class Store:
 
     # --- settings ---
     def settings(self) -> dict:
-        s = dict(DEFAULT_SETTINGS)
+        s = {k: (list(v) if isinstance(v, list) else v) for k, v in DEFAULT_SETTINGS.items()}
         for r in self._exec("SELECT key, value FROM settings").fetchall():
             s[r["key"]] = json.loads(r["value"])
         s["snoozed"] = s["snoozed_until"] > time.time()

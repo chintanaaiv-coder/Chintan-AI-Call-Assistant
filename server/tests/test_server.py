@@ -161,3 +161,15 @@ def test_iphone_web_app_is_allowed_by_cors(client):
     r = client.options("/api/calls", headers={"Origin": "https://evil.example",
                                               "Access-Control-Request-Method": "GET"})
     assert "access-control-allow-origin" not in r.headers
+
+
+def test_default_call_handling_rules_are_built_in(client):
+    st = client.get("/api/settings", headers=H).json()
+    texts = " ".join(r["text"] for r in st["category_rules"])
+    assert "not interested, thank you" in texts and "confidential" in texts and "watchman" in texts
+    assert any("not looking for a loan" in q for q in st["quick_replies"])
+    p = build_system_prompt("Chintan", category_rules=st["category_rules"])
+    assert "HOW TO HANDLE EACH TYPE OF CALL" in p and "duly noted" in p and p.index("NEVER") < p.index("HOW TO HANDLE")
+    # Owner edits replace the defaults
+    client.put("/api/settings", json={"category_rules": [{"category": "sales", "text": "Say no in Hindi"}]}, headers=H)
+    assert client.get("/api/settings", headers=H).json()["category_rules"] == [{"category": "sales", "text": "Say no in Hindi"}]

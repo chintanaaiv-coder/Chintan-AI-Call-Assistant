@@ -4,6 +4,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../main.dart';
 import '../native.dart';
 import '../theme.dart';
+import 'call_rules.dart';
 import 'teach.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -148,6 +149,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
               subtitle: const Text('So Chintan sounds like you: your words and tone'),
               trailing: const Icon(Icons.chevron_right),
               onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const TeachScreen())),
+            ),
+            _h('Replies by call type'),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.rule, color: C.teal),
+              title: const Text('How Chintan handles each type of call'),
+              subtitle: Text('${((appState.settings['category_rules'] as List?) ?? const []).length} rules: bank pitch, client list, sales, GST office, delivery...'),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CallRulesScreen())),
             ),
             _h('Tell Chintan'),
             TextField(
